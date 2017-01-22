@@ -178,6 +178,8 @@ var recognition = new webkitSpeechRecognition();
                     if (parts.length == 2 && (parts[1] == "pixels" || parts[1] == "pixel")) {
                         return parts[0] + "px";
                     }
+                    
+                    return parts.join("-");
                 }
                 
                 this.command = function(text, words) {
