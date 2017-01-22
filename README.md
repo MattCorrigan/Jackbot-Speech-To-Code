@@ -27,6 +27,6 @@ Adding/Removing
 ---------------
 You can add and delete tags, text, and attributes inside of the element you are at.
 - Saying **"Add [paragraph, a, divider] tag"** will create a p, a, or div tag inside your current location.
-- Saying **"[Type, Set text] + '[WORD]'"** wil create text inside your current location.
+- Saying **"[Type, Set text] + '[WORD]'"** will create text inside your current location.
 - Saying **"Set attribute [attribute] equals" + "[WORD]"** will create an attribute and set it's value to the text.
 - Saying **"Remove" + the element you want to remove"** will remove that element.
