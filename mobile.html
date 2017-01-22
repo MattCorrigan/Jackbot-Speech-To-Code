@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+
+<html>
+
+    <head>
+    
+    </head>
+    
+    <body>
+        <p id="test"></p>
+        <iframe id="iframe"></iframe>
+        <div style="box-sizing:border-box;width:90vw;height:90vh;" id="result"></div>
+        
+        <script>
+        
+            var recognition = new webkitSpeechRecognition();
+            var textarea = document.getElementById("result");
+            var currentElement = undefined;
+            var htmlTag = undefined;
+        
+            function escapeHTML(unsafe) {
+                return unsafe
+                     .replace(/&/g, "&amp;")
+                     .replace(/</g, "&lt;")
+                     .replace(/>/g, "&gt;")
+                     .replace(/"/g, "&quot;")
+                     .replace(/'/g, "&#039;")
+                     .replace(/\n/g, "<br>")
+                     .replace(/\t/g, "&nbsp&nbsp&nbsp&nbsp")
+                     .replace(/\*\~\*/g, "<span style='color:red'>")
+                     .replace(/\~\*\~/g, "</span>");
+             }
+        
+            var writeElements = function() {
+                var text = escapeHTML("<!DOCTYPE html>\n" + htmlTag.toText(0));
+                textarea.innerHTML = text;
+                var raw_text = "<!DOCTYPE html>\n" + htmlTag.toText(0);
+                raw_text = raw_text.replace(/\*\~\*/g, "").replace(/\~\*\~/g, "");
+                document.getElementById('iframe').contentWindow.document.write(raw_text);
+            }
+        
+            var Element = function(p, name) {
+                this.name = name;
+                this.children = [];
+                this.attr = {};
+                this.text = "";
+                this.parentElem = p;
+                this.id = Math.floor(Math.random() * 100000);
+                
+                this.attrText = function() {
+                    var text = "";
+                    for (prop in this.attr) {
+                        text += prop + "=" + this.attr[prop] + " ";
+                    }
+                    return text;
+                }
+                
+                this.toText = function(indent) {
+                    
+                    var start = "";
+                    var end = "";
+                    
+                    if (this.id === currentElement.id) {
+                        start = "*~*";
+                        end = "~*~";
+                    }
+                    
+                    if (this.text.length > 0) {
+                        return start + "<" + this.name + " " + this.attrText() + ">" + this.text + "</" + this.name + ">" + end;
+                    }
+                    
+                    if (this.children.length == 0) {
+                        return start + "<" + this.name + " " + this.attrText() + "/>" + end;
+                    }
+                    
+                    var data = "";
+                    
+                    for (var j = 0; j < indent; j++) {
+                        data += "\t";
+                    }
+                    
+                    data = start + "<" + this.name + " " + this.attrText() + ">" + end;
+                    
+                    for (var i = 0; i < this.children.length; i++) {
+                        data += "\n";
+                        for (var j = 0; j < indent+1; j++) {
+                            data += "\t";
+                        }
+                        data += this.children[i].toText(indent+1);
+                    }
+                    data += "\n";
+                    for (var j = 0; j < indent; j++) {
+                        data += "\t";
+                    }
+                    data += "</" + this.name + ">"
+                    return data;
+                }
+            }
+            
+            // creates the nodes to start with
+            var createTemplateNodes = function() {
+                var html = new Element(undefined, "html")
+                htmlTag = html;
+                
+                var headTag = new Element(html, "head")
+                var bodyTag = new Element(html, "body")
+                
+                html.children.push(headTag);
+                html.children.push(bodyTag);
+                
+                currentElement = html;
+                writeElements();
+            }
+            
+            
+            recognition.onresult = function(event) {
+              var text = event.results["0"]["0"].transcript;
+              var words = text.split(" ");
+              document.getElementById("test").innerHTML = words;
+              
+              if (text == "create document") {
+                  createTemplateNodes();
+              }
+              
+              if ((words[0] == "move" || words[0] == "go") && (words[1] == "to" || words[1] =="into") && (words[3] == ("tag" || "tech") || words[3] == "element")) {
+                  var tagToMoveTo = words[2];
+                  for (var i = 0; i < currentElement.children.length; i++) {
+                      if (currentElement.children[i].name == tagToMoveTo) {
+                          currentElement = currentElement.children[i];
+                          break;
+                      }
+                  }
+                  writeElements();
+              }
+              
+              if (text == "move to parent") {
+                  if (currentElement.parentElem !== undefined) {
+                    currentElement = currentElement.parentElem;
+                  }
+                  writeElements();
+              }
+              
+              if ((words[0] == "create" || words[0] == "add") && (words[2] == ("tag" || "tech") || words[2] == "element")) {
+                  var tagName = words[1];
+                  var e = new Element(currentElement, tagName);
+                  currentElement.children.push(e);
+                  currentElement = e;
+                  writeElements();
+              }
+              
+              if (words[0] == "set" && words[1] == "text") {
+                  var text = "";
+                  for (var x = 2; x < words.length; x++) {
+                     text += words[x] + " ";
+                  }
+                  text = text.slice(0, -1);
+                  if (currentElement.children.length == 0) {
+                    currentElement.text = text;
+                  }
+                  writeElements();
+              }
+              
+              if (words[0] == "next" && words[1] == "child") {
+                  var childs = currentElement.parentElem.children;
+                  var index = childs.indexOf(currentElement) + 1;
+                  if (index < childs.length) {
+                      currentElement = childs[index];
+                  }
+                  writeElements();
+              }
+              
+              if (words[0] == "set" && words[1] == "attribute" && words[3] == "equals") {
+                  console.log("hello");
+                  var property = words[2];
+                  var value = words[4];
+                  currentElement.attr[property] = value;
+                  writeElements();
+              }
+              
+            }
+            
+            recognition.onaudioend = function() {
+                setTimeout(function() {recognition.start();}, 1000);
+            }
+            
+            recognition.start();
+        </script>
+    </body>
+
+</html>
