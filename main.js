@@ -328,7 +328,7 @@ var recognition = new webkitSpeechRecognition();
               
               
               if (scripting) {
-                  if (text == "end script") {
+                  if (text == "end scripts" || text == "end script" || text == "N script" || text == "and script" || text == "and script") {
                       scripting = false;
                       currentElement = htmlTag;
                   } else {
