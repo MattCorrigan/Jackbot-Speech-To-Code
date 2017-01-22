@@ -3,9 +3,11 @@ var recognition = new webkitSpeechRecognition();
             var currentElement = undefined;
             var htmlTag = undefined;
             var scripting = false;
+            var styling = false;
             
             var playing = true;
             var scripter;
+            var styler;
             
             var playPause = function() {
                 var button = document.getElementById("record");
@@ -39,6 +41,7 @@ var recognition = new webkitSpeechRecognition();
             var writeElements = function() {
                 var raw_text = "<!DOCTYPE html>\n" + htmlTag.toText(0);
                 raw_text += scripter.toText();
+                raw_text += styler.toText();
                 var text = escapeHTML(raw_text);
                 textarea.innerHTML = text;
                 
@@ -116,6 +119,103 @@ var recognition = new webkitSpeechRecognition();
             }
             
             scripter = new ScriptElement();
+            
+            var CSSBlock = function(selector) {
+                this.selector = selector;
+                this.attr = {};
+                
+                this.text = function(selected) {
+                    var data = "";
+                    if (selected) {
+                        data += "*~*";
+                    }
+                    
+                    data += selector + " {\n";
+                    for (prop in this.attr) {
+                        data += "\t" + prop + ": " + this.attr[prop] + ";\n";
+                    }
+                    data += "}";
+                    
+                    if (selected) {
+                        data += "*~*";
+                    }
+                    return data;
+                }
+            }
+            
+            var StyleElement = function() {
+                this.blocks = [];
+                this.currentBlock = -1;
+                
+                this.toText = function() {
+                    var data = "";
+                    if (this.currentBlock == -1 && styling) {
+                        data += "*~*";
+                    }
+                    data += "\n<style>"
+                    for (var i = 0; i < this.blocks.length; i++) {
+                        if (this.currentBlock == i) {
+                            data += "\n" + this.blocks[i].text(true);
+                        } else {
+                            data += "\n" + this.blocks[i].text(false);
+                        }
+                    }
+                    data += "\n</style>"
+                    if (this.currentBlock == -1 && styling) {
+                        data += "~*~";
+                    }
+                    return data;
+                }
+                
+                this.concat = function(parts) {
+                    if (parts.length == 1) {
+                        return parts[0];
+                    }
+                    if (parts.length == 0) {
+                        return undefined;
+                    }
+                    
+                    if (parts.length == 2 && (parts[1] == "pixels" || parts[1] == "pixel")) {
+                        return parts[0] + "px";
+                    }
+                }
+                
+                this.command = function(text, words) {
+                    if (words[0] == "select" && (words[1] == "class" || words[1] == "glass")) {
+                        var selector = "." + words[2];
+                        this.blocks.push(new CSSBlock(selector));
+                        this.currentBlock = this.blocks.length - 1;
+                    }
+                    
+                    if (words[0] == "select" && words[1] == "ID") {
+                        var selector = "#" + words[2];
+                        this.blocks.push(new CSSBlock(selector));
+                        this.currentBlock = this.blocks.length - 1;
+                    }
+                    
+                    if (words[0] == "set" && this.currentBlock > -1) {
+                        var names = [];
+                        var attrs = [];
+                        var start = true;
+                        for (var i = 1; i < words.length; i++) {
+                            if (words[i] == "equals") {
+                                start = false;
+                            } else  if (start) {
+                                names.push(words[i]);
+                            } else {
+                                attrs.push(words[i]);
+                            }
+                        }
+                        var name = names.join("-");
+                        var attr = this.concat(attrs);
+                        this.blocks[this.currentBlock].attr[name] = attr;
+                    }
+                    writeElements();
+                }
+                
+            }
+            
+            styler = new StyleElement();
         
             var Element = function(p, name) {
                 this.name = name;
@@ -228,12 +328,24 @@ var recognition = new webkitSpeechRecognition();
               if (scripting) {
                   if (text == "end script") {
                       scripting = false;
+                      currentElement = htmlTag;
                   } else {
                       scripter.addLine(text, words);
                   }
+                  writeElements();
                   return;
               }
               
+              if (styling) {
+                  if (text == "end Style" || text == "end styles" || text == "N Style" || text == "and style" || text == "and styles") {
+                      styling = false;
+                      currentElement = htmlTag;
+                  } else {
+                      styler.command(text, words);
+                  }
+                  writeElements();
+                  return;
+              }
               
               if (text == "create document" || text == "great document" || text == "create documents" || text == "great document") {
                   createTemplateNodes();
@@ -250,7 +362,7 @@ var recognition = new webkitSpeechRecognition();
                   writeElements();
               }
               
-              if (text == "move to parent" || text == "move to parents" || text == "move to Paris") {
+              if (text == "move to parent" || text == "move to parents" || text == "move to Paris" || text == "moves to parent" || text == "moves to parents" || text == "moves to Paris") {
                   if (currentElement.parentElem !== undefined) {
                     currentElement = currentElement.parentElem;
                   }
@@ -283,7 +395,7 @@ var recognition = new webkitSpeechRecognition();
                   writeElements();
               }
               
-              if (words[0] == "set" && words[1] == "text") {
+              if ((words[0] == "set" || words[0] == "send") && words[1] == "text") {
                   var text = "";
                   for (var x = 2; x < words.length; x++) {
                      text += words[x] + " ";
@@ -308,7 +420,7 @@ var recognition = new webkitSpeechRecognition();
                   writeElements();
               }
               
-              if (words[0] == "set" && words[1] == "attribute" && words[3] == "equals") {
+              if ((words[0] == "set" || words[0] == "send") && words[1] == "attribute" && words[3] == "equals") {
                   var property = words[2];
                   var value = words[4];
                   currentElement.attr[property] = value;
@@ -343,7 +455,14 @@ var recognition = new webkitSpeechRecognition();
               
               if (text == "start script") {
                   scripting = true;
+                  styling = false;
                   currentElement = scripter;
+              }
+              
+              if (text == "start Style" || text == "start styles") {
+                  scripting = false;
+                  styling = true;
+                  currentElement = styler;
               }
             }
             
