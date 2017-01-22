@@ -8,6 +8,7 @@ Table of Contents
 - [Movement](#movement)
 - [Adding/Removing](#adding/removing)
 - [Scripting](#scripting)
+- [Styling](#styling)
   
 Starting
 --------
@@ -48,3 +49,12 @@ Javascript is stored in a script tag below the HTML, and can be coded using spee
 - Saying **"Comment [comment]"** will allow you to produce comments. For example, **"Comment hello, world!"** will produce **"// hello, world!"**.
 
 - Saying **"Create function [functionName]"** will create an empty function for Javascript code.
+
+Styling
+-------
+- Like with javascript, **"start style"** and **"end style"** are used to create and complete CSS editing.
+- Saying **"Select class [className]"** will create a new selector and block for that class.
+- Saying **"Select id [id]"** will create a new selector and block for that id.
+- Saying **"Set [propertyName] equals [propertyValue]"** will create a new CSS rule in the current block.
+- For example, **"Set color equals red"** will add **"color: red;"** in the current block.
+- Saying **"Set font size equals 400 pixels"** will add **"font-size: 400px;"** to the current block.
