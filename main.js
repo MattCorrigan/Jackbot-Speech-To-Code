@@ -49,39 +49,69 @@ var recognition = new webkitSpeechRecognition();
             var ScriptElement = function() {
                 this.text = [];
                 this.id = -1;
-                this.currentLine = 0;
+                this.currentLine = -1;
                 
                 this.toText = function() {
-                    var data = "<script>";
+                    var data = "\n<script>\n";
                     for (var i = 0; i < this.text.length; i++) {
+                        if (this.currentLine == i) {
+                            data += "*~*";
+                        }
                         data += this.text[i] + "\n";
+                        if (this.currentLine == i) {
+                            data += "~*~";
+                        }
                     }
-                    return data + "</script>";
+                    return data + "\n</script>\n";
                 }
                 
                 this.addLine = function(text, words) {
+                    console.log(words);
                     if (text == "remove line") {
                         this.text.splice(this.currentLine, 1);
                     }
+                    
+                    else if (["create", "great"].indexOf(words[0]) > -1 && ["function", "method"].indexOf(words[1]) > -1) {
+                        var name = words[2];
+                        this.text.push("function " + name + "() {   }");
+                        this.currentLine++;
+                    }
+                    
                     else if (words[0] == "variable") {
                         var variableName = words[1];
                         if (words.length > 3) {
                             if (words[2] == "equals") {
-                                if (words[3] == "integer") {
-                                    this.text.push("var " + variableName + " = " + words[4] + ";");
-                                } else if(words[3] == "float") {
-                                    this.text.push("var " + variableName + " = " + words[4] + ";");
+                                
+                                if (words.length == 4) {
+                                    this.text.push("var " + variableName + " = \"" + words[3] + "\";")
+                                    this.currentLine++;
                                 } else {
-                                    this.text.push("var " + variableName + " = \"" + words[4] + "\";");
+                                    if (words[3] == "integer") {
+                                        this.text.push("var " + variableName + " = " + words[4] + ";");
+                                        this.currentLine++;
+                                    } else if(words[3] == "float") {
+                                        this.text.push("var " + variableName + " = " + words[4] + ";");
+                                        this.currentLine++;
+                                    } else {
+                                        this.text.push("var " + variableName + " = \"" + words[4] + "\";");
+                                        this.currentLine++;
+                                    }
                                 }
                             } else {
                                 this.text.push("var " + variableName + ";");
+                                this.currentLine++;
                             }
                         } else {
                             // just decalaring variable
                             this.text.push("var " + variableName + ";");
+                            this.currentLine++;
                         }
                     }
+                    else if (words[0] == "comment") {
+                        this.text.push("// " + text.substring(8, text.length));
+                        this.currentLine++;
+                    }
+                    writeElements();
                 }
             }
             
@@ -136,7 +166,7 @@ var recognition = new webkitSpeechRecognition();
                     var start = "";
                     var end = "";
                     
-                    if (this.id === currentElement.id) {
+                    if (this.id === currentElement.id && !scripting) {
                         start = "*~*";
                         end = "~*~";
                     }
