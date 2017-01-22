@@ -10,7 +10,7 @@ Table of Contents
   
 Starting
 --------
-In order to start taking notes, you will need to create a new document. What this does is creates the outline of the HTML page.
+ In order to start taking notes, you will need to create a new document. This will be the outline of the new HTML page.
   - Say "create Document"
 
 
@@ -21,12 +21,12 @@ The orange font is where you currently are in the foundation. **You can only edi
 - Saying **"Next child"** will move you to the next tag.
 - Saying **"Move Parent"** will move you to the previous tag.
 - Saying **"Select by [class, id]"** will move you to the first tag that has that class and id.
-- Saying **"Selecy by name"** will move you to the first instance of name inside of the body or head tag, depending on which you are in. 
+- Saying **"Select by name"** will move you to the first instance of name inside of the body or head tag, depending on which you are in. 
 
 Adding/Removing
 ---------------
-You can add and delete tags, text, and attributes inside of the element you are at.
+You can add and delete tags, text, and attributes inside of the element you are in.
 - Saying **"Add [paragraph, a, divider] tag"** will create a p, a, or div tag inside your current location.
 - Saying **"[Type, Set text] + '[WORD]'"** will create text inside your current location.
-- Saying **"Set attribute [attribute] equals" + "[WORD]"** will create an attribute and set it's value to the text.
-- Saying **"Remove" + the element you want to remove"** will remove that element.
+- Saying **"Set attribute [attribute] equals" + "[WORD]"** will create an attribute and set its value to the text.
+- Saying **"Remove" + "the element you want to remove"** will remove that element.
