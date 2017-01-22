@@ -2,8 +2,10 @@ var recognition = new webkitSpeechRecognition();
             var textarea = document.getElementById("result");
             var currentElement = undefined;
             var htmlTag = undefined;
+            var scripting = false;
             
             var playing = true;
+            var scripter;
             
             var playPause = function() {
                 var button = document.getElementById("record");
@@ -35,12 +37,55 @@ var recognition = new webkitSpeechRecognition();
              }
         
             var writeElements = function() {
-                var text = escapeHTML("<!DOCTYPE html>\n" + htmlTag.toText(0));
-                textarea.innerHTML = text;
                 var raw_text = "<!DOCTYPE html>\n" + htmlTag.toText(0);
+                raw_text += scripter.toText();
+                var text = escapeHTML(raw_text);
+                textarea.innerHTML = text;
+                
                 raw_text = raw_text.replace(/\*\~\*/g, "").replace(/\~\*\~/g, "");
-                document.getElementById('iframe').contentWindow.document.write(raw_text);
+                document.getElementById('iframe').src = "data:text/html;charset=utf-8," + raw_text;
             }
+            
+            var ScriptElement = function() {
+                this.text = [];
+                this.id = -1;
+                this.currentLine = 0;
+                
+                this.toText = function() {
+                    var data = "<script>";
+                    for (var i = 0; i < this.text.length; i++) {
+                        data += this.text[i] + "\n";
+                    }
+                    return data + "</script>";
+                }
+                
+                this.addLine = function(text, words) {
+                    if (text == "remove line") {
+                        this.text.splice(this.currentLine, 1);
+                    }
+                    else if (words[0] == "variable") {
+                        var variableName = words[1];
+                        if (words.length > 3) {
+                            if (words[2] == "equals") {
+                                if (words[3] == "integer") {
+                                    this.text.push("var " + variableName + " = " + words[4] + ";");
+                                } else if(words[3] == "float") {
+                                    this.text.push("var " + variableName + " = " + words[4] + ";");
+                                } else {
+                                    this.text.push("var " + variableName + " = \"" + words[4] + "\";");
+                                }
+                            } else {
+                                this.text.push("var " + variableName + ";");
+                            }
+                        } else {
+                            // just decalaring variable
+                            this.text.push("var " + variableName + ";");
+                        }
+                    }
+                }
+            }
+            
+            scripter = new ScriptElement();
         
             var Element = function(p, name) {
                 this.name = name;
@@ -50,10 +95,38 @@ var recognition = new webkitSpeechRecognition();
                 this.parentElem = p;
                 this.id = Math.floor(Math.random() * 100000);
                 
+                this.findById = function(id) {
+                    if (this.attr["ID"] == id) {
+                        return this;
+                    }
+                    
+                    for (var i = 0; i < this.children.length; i++) {
+                        var response = this.children[i].findById(id);
+                        if (response !== undefined) {
+                            return response;
+                        }
+                    }
+                    return undefined;
+                }
+                
+                this.findByClassName = function(className) {
+                    if (this.attr["class"] == className) {
+                        return this;
+                    }
+                    
+                    for (var i = 0; i < this.children.length; i++) {
+                        var response = this.children[i].findById(className);
+                        if (response !== undefined) {
+                            return response;
+                        }
+                    }
+                    return undefined;
+                }
+                
                 this.attrText = function() {
                     var text = "";
                     for (prop in this.attr) {
-                        text += prop + "=" + this.attr[prop] + " ";
+                        text += prop + "=\"" + this.attr[prop] + "\" ";
                     }
                     return text;
                 }
@@ -107,11 +180,9 @@ var recognition = new webkitSpeechRecognition();
                 
                 var headTag = new Element(html, "head")
                 var bodyTag = new Element(html, "body")
-                var styleTag = new Element(html, "style")
                 
                 html.children.push(headTag);
                 html.children.push(bodyTag);
-                html.children.push(styleTag);
                 
                 currentElement = html;
                 writeElements();
@@ -121,9 +192,20 @@ var recognition = new webkitSpeechRecognition();
             recognition.onresult = function(event) {
               var text = event.results["0"]["0"].transcript;
               var words = text.split(" ");
-              console.log(words);
+              document.getElementById("test").innerHTML = words;
               
-              if (text == "create document" || text == "great document") {
+              
+              if (scripting) {
+                  if (text == "end script") {
+                      scripting = false;
+                  } else {
+                      scripter.addLine(text, words);
+                  }
+                  return;
+              }
+              
+              
+              if (text == "create document" || text == "great document" || text == "create documents" || text == "great document") {
                   createTemplateNodes();
               }
               
@@ -148,6 +230,9 @@ var recognition = new webkitSpeechRecognition();
               if (["create", "add"].indexOf(words[0]) > -1 && ["Tech", "tag", "element", "day", "fzt"].indexOf(words[2]) > -1) {
                   if (words[1] == "paragraph") {
                       words[1] = "p";
+                  }
+                  if (words[1] == "divider") {
+                      words[1] = "div";
                   }
                   var tagName = words[1];
                   var e = new Element(currentElement, tagName);
@@ -180,6 +265,10 @@ var recognition = new webkitSpeechRecognition();
                   writeElements();
               }
               
+              if (words[0] == "delete" && words[1] == "attribute") {
+                  currentElement.attr[words[2]] = undefined;
+              }
+              
               if (words[0] == "next" && words[1] == "child") {
                   var childs = currentElement.parentElem.children;
                   var index = childs.indexOf(currentElement) + 1;
@@ -196,6 +285,36 @@ var recognition = new webkitSpeechRecognition();
                   writeElements();
               }
               
+              if (words[0] == "select" && words[2] == "ID") {
+                  var id = words[1];
+                  var element = htmlTag.findById(id);
+                  if (element !== undefined) {
+                    currentElement = element;
+                  }
+                  writeElements();
+              }
+              
+              if (words[0] == "select" && words[2] == "class") {
+                  var className = words[1];
+                  var element = htmlTag.findByClassName(className);
+                  if (element !== undefined) {
+                    currentElement = element;
+                  }
+                  writeElements();
+              }
+              
+              if (text == "remove") {
+                  var removed = currentElement;
+                  currentElement = currentElement.parentElem;
+                  var index = currentElement.children.indexOf(removed);
+                  currentElement.children.splice(index, 1);
+                  writeElements();
+              }
+              
+              if (text == "start script") {
+                  scripting = true;
+                  currentElement = scripter;
+              }
             }
             
             recognition.onaudioend = function() {
